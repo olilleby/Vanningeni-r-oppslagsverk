@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vanningeniørens oppslagsverk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F4EE;
+    --paper-line:#D8E0E4;
+    --ink:#16242E;
+    --blue:#1B3A5C;
+    --blue-deep:#0F2740;
+    --cyan:#2E8B8B;
+    --rust:#C1542C;
+    --grid:#CBD9DE;
+    --paper-card:#FFFFFE;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size:28px 28px;
+    color:var(--ink);
+    font-family:'Source Sans 3', sans-serif;
+    line-height:1.5;
+  }
+  h1,h2,h3,.display{
+    font-family:'Archivo', sans-serif;
+    letter-spacing:-0.01em;
+    color:var(--blue-deep);
+  }
+  code,.mono,.formula,input,select,.value-out{
+    font-family:'JetBrains Mono', monospace;
+  }
+  a{color:var(--blue);}
+
+  /* ---- Layout shell ---- */
+  .sheet-frame{
+    max-width:1180px;
+    margin:24px auto 80px;
+    background:var(--paper-card);
+    border:2px solid var(--blue-deep);
+    box-shadow:0 0 0 1px var(--paper), 6px 6px 0 0 rgba(15,39,64,0.12);
+    position:relative;
+  }
+  .sheet-frame::before{
+    content:"";
+    position:absolute; inset:8px;
+    border:1px solid var(--blue);
+    pointer-events:none;
+  }
+
+  /* Title block, styled like an engineering drawing tittelfelt */
+  .titleblock{
+    display:grid;
+    grid-template-columns: 1fr auto;
+    border-bottom:2px solid var(--blue-deep);
+    padding:22px 28px 18px;
+    align-items:end;
+    gap:20px;
+  }
+  .titleblock h1{
+    font-size:clamp(28px,4vw,44px);
+    margin:0 0 4px;
+    font-weight:800;
+    text-transform:uppercase;
+  }
+  .titleblock .subtitle{
+    color:var(--blue);
+    font-size:15px;
+    max-width:520px;
+  }
+  .tb-meta{
+    border:1px solid var(--blue);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+  .tb-meta table{border-collapse:collapse;}
+  .tb-meta td{
+    border:1px solid var(--blue);
+    padding:5px 10px;
+    white-space:nowrap;
+  }
+  .tb-meta td.label{color:var(--blue); font-weight:600; background:#EEF3F5;}
+  .tb-meta td.val{font-family:'JetBrains Mono',monospace; color:var(--ink); font-size:12px;}
+
+  /* Nav strip = sheet index */
+  .sheet-index{
+    display:flex;
+    flex-wrap:wrap;
+    gap:0;
+    border-bottom:2px solid var(--blue-deep);
+    background:#EEF3F5;
+  }
+  .sheet-index a{
+    flex:1 1 auto;
+    text-align:center;
+    padding:12px 14px;
+    text-decoration:none;
+    color:var(--blue-deep);
+    font-family:'Archivo',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
+    border-right:1px solid var(--grid);
+    position:relative;
+  }
+  .sheet-index a:last-child{border-right:none;}
+  .sheet-index a .num{
+    display:block;
+    font-size:10px;
+    color:var(--rust);
+    font-weight:600;
+    margin-bottom:2px;
+  }
+  .sheet-index a:hover{background:#fff;}
+
+  main{padding:8px 28px 40px;}
+
+  section.sheet{
+    padding:48px 0 28px;
+    border-bottom:1px dashed var(--grid);
+  }
+  section.sheet:last-child{border-bottom:none;}
+
+  .sheet-head{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    margin-bottom:6px;
+  }
+  .sheet-head .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    color:var(--rust);
+    font-size:13px;
+    font-weight:700;
+    border:1px solid var(--rust);
+    padding:2px 8px;
+  }
+  .sheet-head h2{
+    font-size:26px;
+    margin:0;
+    text-transform:uppercase;
+  }
+  .sheet-intro{color:#3D525E; max-width:760px; margin:6px 0 28px; font-size:15px;}
+
+  /* Cards holding formula + calculator */
+  .panel-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:22px;
+  }
+  @media(max-width:820px){ .panel-grid{grid-template-columns:1fr;} }
+
+  .card{
+    border:1px solid var(--blue);
+    background:#fff;
+    position:relative;
+  }
+  .card-head{
+    background:var(--blue-deep);
+    color:var(--paper);
+    padding:9px 14px;
+    font-family:'Archivo',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+    display:flex;
+    justify-content:space-between;
+  }
+  .card-body{padding:16px 16px 18px;}
+
+  .formula{
+    background:#F2F6F4;
+    border-left:3px solid var(--cyan);
+    padding:12px 14px;
+    margin:0 0 12px;
+    font-size:16px;
+    overflow-x:auto;
+  }
+  .formula .desc{
+    font-family:'Source Sans 3',sans-serif;
+    font-size:12.5px;
+    color:#4A5E68;
+    margin-top:6px;
+  }
+
+  .calc-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:9px;
+    font-size:13.5px;
+  }
+  .calc-row label{flex:0 0 190px; color:var(--blue-deep); font-weight:600;}
+  .calc-row input, .calc-row select{
+    flex:1;
+    padding:6px 8px;
+    border:1px solid #9BB2BC;
+    background:#FCFCFA;
+    font-size:13.5px;
+    color:var(--ink);
+  }
+  .calc-row input:focus, .calc-row select:focus{outline:2px solid var(--cyan); outline-offset:1px;}
+  .calc-row .unit{flex:0 0 48px; color:#6B828C; font-size:12px;}
+
+  .result-box{
+    margin-top:12px;
+    padding:12px 14px;
+    background:#EAF2EE;
+    border:1px solid var(--cyan);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .result-box .rlabel{font-size:12.5px; color:var(--blue-deep); font-weight:600; text-transform:uppercase;}
+  .result-box .rval{font-size:20px; font-weight:700; color:var(--blue-deep);}
+  .result-box .rval .rune{color:var(--rust); font-size:13px; margin-left:6px;}
+
+  table.ref{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  table.ref caption{
+    text-align:left; font-size:11px; color:#6B828C; margin-bottom:6px; text-transform:uppercase;
+  }
+  table.ref th, table.ref td{
+    border:1px solid var(--grid);
+    padding:6px 9px;
+    text-align:left;
+  }
+  table.ref th{background:#EEF3F5; color:var(--blue-deep); font-family:'Archivo',sans-serif; font-size:12px;}
+  table.ref td.mono{font-family:'JetBrains Mono',monospace;}
+
+  /* SVG drawing cards */
+  .drawing-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit,minmax(280px,1fr));
+    gap:20px;
+    margin-top:8px;
+  }
+  .draw-card{border:1px solid var(--blue); background:#fff;}
+  .draw-card .draw-head{
+    padding:8px 12px;
+    border-bottom:1px solid var(--grid);
+    font-family:'Archivo',sans-serif;
+    font-weight:700;
+    font-size:12.5px;
+    text-transform:uppercase;
+    color:var(--blue-deep);
+    display:flex;
+    justify-content:space-between;
+  }
+  .draw-card .draw-head .dn{color:var(--rust); font-family:'JetBrains Mono',monospace;}
+  .draw-card svg{width:100%; height:auto; display:block; background:
+      repeating-linear-gradient(0deg, transparent, transparent 13px, #EEF3F5 13px, #EEF3F5 14px),
+      repeating-linear-gradient(90deg, transparent, transparent 13px, #EEF3F5 13px, #EEF3F5 14px);
+  }
+  .draw-note{font-size:11.5px; color:#4A5E68; padding:8px 12px 10px;}
+
+  footer{
+    text-align:center;
+    padding:20px;
+    font-size:11.5px;
+    color:#6B828C;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .small-note{font-size:11.5px; color:#7A8E97; margin-top:4px;}
+</style>
+</head>
+<body>
+
+<div class="sheet-frame">
+
+  <div class="titleblock">
+    <div>
+      <h1>Vanningeniørens<br>oppslagsverk</h1>
+      <div class="subtitle">Formler, dimensjoneringsverktøy og tekniske tegninger for VA-konsulenten — hydraulikk, avløp/overvann og drikkevannsforsyning.</div>
+    </div>
+    <div class="tb-meta">
+      <table>
+        <tr><td class="label">Fag</td><td class="val">VA-TEKNIKK</td></tr>
+        <tr><td class="label">Status</td><td class="val">I BRUK</td></tr>
+        <tr><td class="label">Målestokk</td><td class="val">NTS</td></tr>
+        <tr><td class="label">Rev.</td><td class="val" id="rev-date"></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <nav class="sheet-index">
+    <a href="#hydraulikk"><span class="num">ARK 01</span>Hydraulikk</a>
+    <a href="#avlop"><span class="num">ARK 02</span>Avløp / Overvann</a>
+    <a href="#drikkevann"><span class="num">ARK 03</span>Drikkevann</a>
+    <a href="#tegninger"><span class="num">ARK 04</span>Tegningsbibliotek</a>
+  </nav>
+
+  <main>
+
+    <!-- ===================== HYDRAULIKK ===================== -->
+    <section class="sheet" id="hydraulikk">
+      <div class="sheet-head">
+        <span class="eyebrow">ARK 01</span>
+        <h2>Hydraulikk</h2>
+      </div>
+      <p class="sheet-intro">Trykktap, strømningshastighet og pumpeeffekt i trykkledninger.</p>
+
+      <div class="panel-grid">
+
+        <!-- Colebrook/Hazen-Williams trykktapskalkulator -->
+        <div class="card">
+          <div class="card-head"><span>Trykktap — Hazen-Williams</span><span>01.1</span></div>
+          <div class="card-body">
+            <div class="formula">
+              h<sub>f</sub> = 10.67 · L · Q<sup>1.852</sup> / (C<sup>1.852</sup> · D<sup>4.87</sup>)
+              <div class="desc">h<sub>f</sub> = trykktap [m], L = lengde [m], Q = vannføring [m³/s], C = Hazen-Williams-koeffisient, D = innv. diameter [m]</div>
+            </div>
+            <div class="calc-row"><label for="hw-L">Lengde L</label><input id="hw-L" type="number" value="500" step="1"><span class="unit">m</span></div>
+            <div class="calc-row"><label for="hw-Q">Vannføring Q</label><input id="hw-Q" type="number" value="20" step="0.1"><span class="unit">l/s</span></div>
+            <div class="calc-row"><label for="hw-D">Diameter D</label><input id="hw-D" type="number" value="200" step="1"><span class="unit">mm</span></div>
+            <div class="calc-row"><label for="hw-C">Koeffisient C</label>
+              <select id="hw-C">
+                <option value="150">PE / PVC (C=150)</option>
+                <option value="130" selected>Støpejern, ny (C=130)</option>
+                <option value="100">Støpejern, brukt (C=100)</option>
+                <option value="120">Sement-foret (C=120)</option>
+                <option value="140">GRP (C=140)</option>
+              </select>
+            </div>
+            <div class="result-box">
+              <span class="rlabel">Trykktap h<sub>f</sub></span>
+              <span class="rval" id="hw-out">–</span>
+            </div>
+            <div class="small-note">Gyldig for vann, fullt turbulent strømning, vanlig i norske VA-prosjekter for grove dimensjoneringer.</div>
+          </div>
+        </div>
+
+        <!-- Hastighet i rør -->
+        <div class="card">
+          <div class="card-head"><span>Strømningshastighet</span><span>01.2</span></div>
+          <div class="card-body">
+            <div class="formula">
+              v = Q / A = 4Q / (π·D²)
+              <div class="desc">v = hastighet [m/s], Q = vannføring [m³/s], A = tverrsnittareal [m²]</div>
+            </div>
+            <div class="calc-row"><label for="v-Q">Vannføring Q</label><input id="v-Q" type="number" value="20" step="0.1"><span class="unit">l/s</span></div>
+            <div class="calc-row"><label for="v-D">Diameter D</label><input id="v-D" type="number" value="200" step="1"><span class="unit">mm</span></div>
+            <div class="result-box">
+              <span class="rlabel">Hastighet v</span>
+              <span class="rval" id="v-out">–</span>
+            </div>
+            <table class="ref" style="margin-top:14px;">
+              <caption>Anbefalte hastigheter</caption>
+              <tr><th>Bruksområde</th><th>v [m/s]</th></tr>
+              <tr><td>Drikkevann, transportledning</td><td class="mono">0.5 – 1.5</td></tr>
+              <tr><td>Drikkevann, maks (driftstimer)</td><td class="mono">≤ 2.0</td></tr>
+              <tr><td>Spillvann (selvrens.)</td><td class="mono">≥ 0.6</td></tr>
+              <tr><td>Overvann</td><td class="mono">0.6 – 3.0</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pumpeeffekt -->
+        <div class="card">
+          <div class="card-head"><span>Pumpeeffekt</span><span>01.3</span></div>
+          <div class="card-body">
+            <div class="formula">
+              P = ρ · g · Q · H / η
+              <div class="desc">P = effekt [W], ρ = 1000 kg/m³, g = 9.81 m/s², Q = vannføring [m³/s], H = løftehøyde [m], η = pumpevirkningsgrad</div>
+            </div>
+            <div class="calc-row"><label for="p-Q">Vannføring Q</label><input id="p-Q" type="number" value="20" step="0.1"><span class="unit">l/s</span></div>
+            <div class="calc-row"><label for="p-H">Løftehøyde H</label><input id="p-H" type="number" value="15" step="0.1"><span class="unit">m</span></div>
+            <div class="calc-row"><label for="p-eta">Virkningsgrad η</label><input id="p-eta" type="number" value="0.7" step="0.01"><span class="unit">–</span></div>
+            <div class="result-box">
+              <span class="rlabel">Akseleffekt P</span>
+              <span class="rval" id="p-out">–</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bernoulli / trykk -->
+        <div class="card">
+          <div class="card-head"><span>Trykk fra vannsøyle</span><span>01.4</span></div>
+          <div class="card-body">
+            <div class="formula">
+              p = ρ · g · h
+              <div class="desc">p = trykk [Pa], h = høyde vannsøyle [m]. Merk: 1 bar ≈ 10.2 m vannsøyle.</div>
+            </div>
+            <div class="calc-row"><label for="b-h">Høyde h</label><input id="b-h" type="number" value="40" step="0.1"><span class="unit">m</span></div>
+            <div class="result-box">
+              <span class="rlabel">Trykk p</span>
+              <span class="rval" id="b-out">–</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===================== AVLØP / OVERVANN ===================== -->
+    <section class="sheet" id="avlop">
+      <div class="sheet-head">
+        <span class="eyebrow">ARK 02</span>
+        <h2>Avløp / Overvann</h2>
+      </div>
+      <p class="sheet-intro">Dimensjonering av overvanns- og spillvannsledninger, rasjonal metode og Mannings formel.</p>
+
+      <div class="panel-grid">
+
+        <!-- Rasjonal metode -->
+        <div class="card">
+          <div class="card-head"><span>Rasjonal metode</span><span>02.1</span></div>
+          <div class="card-body">
+            <div class="formula">
+              Q = C · i · A / 360
+              <div class="desc">Q = dim. vannføring [l/s], C = avrenningskoeffisient, i = nedbørsintensitet [l/(s·ha)], A = nedbørfelt [ha] — NB: faktor justert for enheter l/s, ha, l/(s·ha)</div>
+            </div>
+            <div class="calc-row"><label for="rm-C">Avrenningskoeff. C</label><input id="rm-C" type="number" value="0.6" step="0.01"><span class="unit">–</span></div>
+            <div class="calc-row"><label for="rm-i">Intensitet i</label><input id="rm-i" type="number" value="150" step="1"><span class="unit">l/s·ha</span></div>
+            <div class="calc-row"><label for="rm-A">Nedbørfelt A</label><input id="rm-A" type="number" value="5" step="0.1"><span class="unit">ha</span></div>
+            <div class="result-box">
+              <span class="rlabel">Dim. vannføring Q</span>
+              <span class="rval" id="rm-out">–</span>
+            </div>
+            <table class="ref" style="margin-top:14px;">
+              <caption>Typiske avrenningskoeffisienter</caption>
+              <tr><th>Overflatetype</th><th>C</th></tr>
+              <tr><td>Tette flater (asfalt, tak)</td><td class="mono">0.80 – 0.95</td></tr>
+              <tr><td>Grus</td><td class="mono">0.30 – 0.50</td></tr>
+              <tr><td>Plen / park</td><td class="mono">0.10 – 0.25</td></tr>
+              <tr><td>Skog</td><td class="mono">0.05 – 0.15</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- Manning -->
+        <div class="card">
+          <div class="card-head"><span>Mannings formel (selvfall)</span><span>02.2</span></div>
+          <div class="card-body">
+            <div class="formula">
+              v = (1/n) · R<sup>2/3</sup> · I<sup>1/2</sup>
+              <div class="desc">v = hastighet [m/s], n = Mannings tall, R = hydraulisk radius [m] (≈D/4 ved fullt rør), I = fall [m/m]</div>
+            </div>
+            <div class="calc-row"><label for="mn-D">Rørdiameter D</label><input id="mn-D" type="number" value="300" step="1"><span class="unit">mm</span></div>
+            <div class="calc-row"><label for="mn-I">Fall I</label><input id="mn-I" type="number" value="5" step="0.1"><span class="unit">‰</span></div>
+            <div class="calc-row"><label for="mn-n">Mannings tall n</label>
+              <select id="mn-n">
+                <option value="0.013" selected>Betong (n=0.013)</option>
+                <option value="0.010">PP/PE/PVC (n=0.010)</option>
+                <option value="0.014">Murt kanal (n=0.014)</option>
+                <option value="0.025">Naturlig bekk (n=0.025)</option>
+              </select>
+            </div>
+            <div class="result-box">
+              <span class="rlabel">Hastighet v</span>
+              <span class="rval" id="mn-out-v">–</span>
+            </div>
+            <div class="result-box" style="margin-top:8px;">
+              <span class="rlabel">Kapasitet Q (fullt rør)</span>
+              <span class="rval" id="mn-out-q">–</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- IVF -->
+        <div class="card">
+          <div class="card-head"><span>IVF-kurver — veiledende</span><span>02.3</span></div>
+          <div class="card-body">
+            <p class="small-note" style="margin-top:0;">Faktiske IVF-verdier hentes alltid fra <a href="https://hydra.met.no" target="_blank" rel="noopener">hydra.met.no</a> (MET/NVE) for konkret sted. Tabellen viser typiske størrelsesordener for innlandsklima, til kontroll av magnitude.</p>
+            <table class="ref">
+              <caption>Veiledende, l/(s·ha), gjentaksintervall 20 år</caption>
+              <tr><th>Varighet</th><th>i [l/s·ha]</th></tr>
+              <tr><td class="mono">5 min</td><td class="mono">~250–350</td></tr>
+              <tr><td class="mono">10 min</td><td class="mono">~180–250</td></tr>
+              <tr><td class="mono">30 min</td><td class="mono">~90–140</td></tr>
+              <tr><td class="mono">60 min</td><td class="mono">~55–90</td></tr>
+              <tr><td class="mono">180 min</td><td class="mono">~25–40</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- Klimafaktor -->
+        <div class="card">
+          <div class="card-head"><span>Klimapåslag</span><span>02.4</span></div>
+          <div class="card-body">
+            <div class="formula">
+              i<sub>dim</sub> = i · (1 + κ)
+              <div class="desc">κ = klimafaktor. Norsk Vann anbefaler normalt 1.4–1.5 (40–50 % påslag) for nye anlegg, sjekk gjeldende kommunal VA-norm.</div>
+            </div>
+            <div class="calc-row"><label for="kf-i">Intensitet i</label><input id="kf-i" type="number" value="150" step="1"><span class="unit">l/s·ha</span></div>
+            <div class="calc-row"><label for="kf-k">Klimafaktor (1+κ)</label><input id="kf-k" type="number" value="1.4" step="0.01"><span class="unit">–</span></div>
+            <div class="result-box">
+              <span class="rlabel">Dim. intensitet</span>
+              <span class="rval" id="kf-out">–</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===================== DRIKKEVANN ===================== -->
+    <section class="sheet" id="drikkevann">
+      <div class="sheet-head">
+        <span class="eyebrow">ARK 03</span>
+        <h2>Drikkevannsforsyning</h2>
+      </div>
+      <p class="sheet-intro">Vannbehov, reservoarvolum og trykksoner i ledningsnett.</p>
+
+      <div class="panel-grid">
+
+        <!-- Vannbehov -->
+        <div class="card">
+          <div class="card-head"><span>Døgnvannbehov</span><span>03.1</span></div>
+          <div class="card-body">
+            <div class="formula">
+              Q<sub>d</sub> = N · q · f<sub>maks</sub>
+              <div class="desc">N = antall personer, q = spesifikt forbruk [l/p·d], f<sub>maks</sub> = døgnfaktor</div>
+            </div>
+            <div class="calc-row"><label for="vb-N">Antall personer</label><input id="vb-N" type="number" value="2000" step="10"><span class="unit">p</span></div>
+            <div class="calc-row"><label for="vb-q">Spes. forbruk</label><input id="vb-q" type="number" value="200" step="5"><span class="unit">l/p·d</span></div>
+            <div class="calc-row"><label for="vb-f">Døgnfaktor</label><input id="vb-f" type="number" value="1.5" step="0.05"><span class="unit">–</span></div>
+            <div class="result-box">
+              <span class="rlabel">Maks døgnforbruk</span>
+              <span class="rval" id="vb-out">–</span>
+            </div>
+            <table class="ref" style="margin-top:14px;">
+              <caption>Veiledende spesifikt forbruk</caption>
+              <tr><th>Type</th><th>l/p·d</th></tr>
+              <tr><td>Husholdning</td><td class="mono">150 – 200</td></tr>
+              <tr><td>Inkl. lekkasjer/næring</td><td class="mono">250 – 350</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- Reservoarvolum -->
+        <div class="card">
+          <div class="card-head"><span>Reservoarvolum</span><span>03.2</span></div>
+          <div class="card-body">
+            <div class="formula">
+              V = Q<sub>d</sub> · t / 24
+              <div class="desc">V = utjevningsvolum [m³], Q<sub>d</sub> = døgnforbruk [m³/d], t = ønsket buffertid [timer], normalt 1/3–1/2 døgnforbruk + brannvannsreserve</div>
+            </div>
+            <div class="calc-row"><label for="rv-Qd">Døgnforbruk</label><input id="rv-Qd" type="number" value="600" step="10"><span class="unit">m³/d</span></div>
+            <div class="calc-row"><label for="rv-t">Buffertid t</label><input id="rv-t" type="number" value="12" step="1"><span class="unit">timer</span></div>
+            <div class="calc-row"><label for="rv-brann">Brannvannsreserve</label><input id="rv-brann" type="number" value="108" step="1"><span class="unit">m³</span></div>
+            <div class="result-box">
+              <span class="rlabel">Totalt volum</span>
+              <span class="rval" id="rv-out">–</span>
+            </div>
+            <div class="small-note">Brannvann iht. VA-norm typisk 20 l/s i 1.5–3 timer for boligfelt; sjekk lokal norm/risikovurdering.</div>
+          </div>
+        </div>
+
+        <!-- Trykksone -->
+        <div class="card">
+          <div class="card-head"><span>Statisk trykk i sone</span><span>03.3</span></div>
+          <div class="card-body">
+            <div class="formula">
+              p<sub>stat</sub> = (z<sub>HRV</sub> − z<sub>punkt</sub>) / 10.2
+              <div class="desc">z<sub>HRV</sub> = høyderefarennivå/vannspeil i reservoar [moh.], z<sub>punkt</sub> = kotehøyde målepunkt [moh.], 10.2 m vs ≈ 1 bar</div>
+            </div>
+            <div class="calc-row"><label for="ts-zr">Kote reservoar</label><input id="ts-zr" type="number" value="220" step="0.1"><span class="unit">moh.</span></div>
+            <div class="calc-row"><label for="ts-zp">Kote målepunkt</label><input id="ts-zp" type="number" value="60" step="0.1"><span class="unit">moh.</span></div>
+            <div class="result-box">
+              <span class="rlabel">Statisk trykk</span>
+              <span class="rval" id="ts-out">–</span>
+            </div>
+            <table class="ref" style="margin-top:14px;">
+              <caption>Krav iht. mange norske VA-normer</caption>
+              <tr><td>Min. trykk forbrukspunkt</td><td class="mono">≥ 2.0 bar</td></tr>
+              <tr><td>Maks. statisk trykk</td><td class="mono">≤ 8–10 bar (sonedeling)</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- Klortilsetning -->
+        <div class="card">
+          <div class="card-head"><span>Klordosering</span><span>03.4</span></div>
+          <div class="card-body">
+            <div class="formula">
+              D = C · Q · 86.4
+              <div class="desc">D = dosering [kg/d], C = ønsket konsentrasjon [mg/l], Q = vannføring [m³/s] — faktor konverterer til kg/døgn</div>
+            </div>
+            <div class="calc-row"><label for="cl-C">Konsentrasjon</label><input id="cl-C" type="number" value="0.3" step="0.01"><span class="unit">mg/l</span></div>
+            <div class="calc-row"><label for="cl-Q">Vannføring Q</label><input id="cl-Q" type="number" value="20" step="0.1"><span class="unit">l/s</span></div>
+            <div class="result-box">
+              <span class="rlabel">Dosering</span>
+              <span class="rval" id="cl-out">–</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===================== TEGNINGSBIBLIOTEK ===================== -->
+    <section class="sheet" id="tegninger">
+      <div class="sheet-head">
+        <span class="eyebrow">ARK 04</span>
+        <h2>Tegningsbibliotek</h2>
+      </div>
+      <p class="sheet-intro">Standard symboler og snitt for rørdeler, kummer og pumpestasjoner — til skisser og prinsippsnitt i tilbud og forprosjekt.</p>
+
+      <div class="drawing-grid">
+
+        <!-- Kum snitt -->
+        <div class="draw-card">
+          <div class="draw-head"><span>Nedstigningskum, snitt</span><span class="dn">DN1000</span></div>
+          <svg viewBox="0 0 280 220" xmlns="http://www.w3.org/2000/svg">
+            <!-- ground -->
+            <line x1="10" y1="40" x2="270" y2="40" stroke="#16242E" stroke-width="2"/>
+            <g stroke="#16242E" stroke-width="1">
+              <line x1="0" y1="35" x2="8" y2="42"/><line x1="10" y1="35" x2="18" y2="42"/>
+              <line x1="20" y1="35" x2="28" y2="42"/><line x1="250" y1="35" x2="258" y2="42"/>
+              <line x1="262" y1="35" x2="270" y2="42"/>
+            </g>
+            <!-- kum ring -->
+            <rect x="95" y="40" width="90" height="150" fill="none" stroke="#1B3A5C" stroke-width="2.5"/>
+            <rect x="105" y="30" width="70" height="14" fill="none" stroke="#1B3A5C" stroke-width="2.5"/>
+            <!-- kjegle -->
+            <path d="M95 70 L80 110 L200 110 L185 70 Z" fill="none" stroke="#1B3A5C" stroke-width="1.6" stroke-dasharray="3 2"/>
+            <!-- stigetrinn -->
+            <g stroke="#2E8B8B" stroke-width="2">
+              <line x1="150" y1="60" x2="170" y2="60"/>
+              <line x1="150" y1="78" x2="170" y2="78"/>
+              <line x1="150" y1="96" x2="170" y2="96"/>
+            </g>
+            <!-- bunn med kanal -->
+            <rect x="80" y="170" width="120" height="20" fill="none" stroke="#1B3A5C" stroke-width="2"/>
+            <line x1="80" y1="180" x2="200" y2="180" stroke="#C1542C" stroke-width="3"/>
+            <!-- innløp / utløp rør -->
+            <rect x="50" y="172" width="35" height="16" fill="none" stroke="#1B3A5C" stroke-width="2"/>
+            <rect x="195" y="172" width="35" height="16" fill="none" stroke="#1B3A5C" stroke-width="2"/>
+            <!-- dim line -->
+            <line x1="220" y1="40" x2="220" y2="190" stroke="#6B828C" stroke-width="0.8"/>
+            <text x="226" y="118" font-family="JetBrains Mono" font-size="9" fill="#6B828C">H var.</text>
+            <text x="100" y="205" font-family="JetBrains Mono" font-size="9" fill="#6B828C">Ø1000</text>
+          </svg>
+          <div class="draw-note">Prefab betongkum med kjegletopp, stigetrinn og rett gjennomløpskanal. Inn-/utløp tilpasses fallretning.</div>
+        </div>
+
+        <!-- Pumpestasjon -->
+        <div class="draw-card">
+          <div class="draw-head"><span>Avløpspumpestasjon</span><span class="dn">PRINSIPP</span></div>
+          <svg viewBox="0 0 280 220" xmlns="http://www.w3.org/2000/svg">
+            <line x1="10" y1="50" x2="270" y2="50" stroke="#16242E" stroke-width="2"/>
+            <!-- pumpesump -->
+            <rect x="90" y="50" width="100" height="130" fill="none" stroke="#1B3A5C" stroke-width="2.5"/>
+            <!-- water level -->
+            <line x1="92" y1="100" x2="188" y2="100" stroke="#2E8B8B" stroke-width="1.4" stroke-dasharray="4 2"/>
+            <text x="192" y="103" font-family="JetBrains Mono" font-size="8" fill="#2E8B8B">start</text>
+            <line x1="92" y1="140" x2="188" y2="140" stroke="#2E8B8B" stroke-width="1.4" stroke-dasharray="4 2"/>
+            <text x="192" y="143" font-family="JetBrains Mono" font-size="8" fill="#2E8B8B">stopp</text>
+            <!-- pump units -->
+            <circle cx="120" cy="165" r="10" fill="none" stroke="#C1542C" stroke-width="2"/>
+            <circle cx="160" cy="165" r="10" fill="none" stroke="#C1542C" stroke-width="2"/>
+            <!-- trykkledning ut -->
+            <line x1="120" y1="155" x2="120" y2="60" stroke="#1B3A5C" stroke-width="2"/>
+            <line x1="120" y1="60" x2="220" y2="60" stroke="#1B3A5C" stroke-width="2"/>
+            <line x1="220" y1="60" x2="220" y2="30" stroke="#1B3A5C" stroke-width="2"/>
+            <!-- inlet -->
+            <rect x="40" y="78" width="50" height="16" fill="none" stroke="#1B3A5C" stroke-width="2"/>
+            <text x="100" y="200" font-family="JetBrains Mono" font-size="9" fill="#6B828C">2 × dykkpumpe</text>
+          </svg>
+          <div class="draw-note">Våtoppstilt pumpestasjon med to dykkpumper (1 drift + 1 reserve), nivåstyrt start/stopp og trykkledning til nett.</div>
+        </div>
+
+        <!-- T-stykke -->
+        <div class="draw-card">
+          <div class="draw-head"><span>T-stykke, plan</span><span class="dn">DN/OD</span></div>
+          <svg viewBox="0 0 280 160" xmlns="http://www.w3.org/2000/svg">
+            <rect x="20" y="65" width="240" height="30" fill="none" stroke="#1B3A5C" stroke-width="3"/>
+            <rect x="125" y="10" width="30" height="55" fill="none" stroke="#1B3A5C" stroke-width="3"/>
+            <line x1="20" y1="80" x2="260" y2="80" stroke="#C1542C" stroke-width="1" stroke-dasharray="5 3"/>
+            <line x1="140" y1="10" x2="140" y2="80" stroke="#C1542C" stroke-width="1" stroke-dasharray="5 3"/>
+            <text x="100" y="130" font-family="JetBrains Mono" font-size="10" fill="#6B828C">Hovedløp + avgrening 90°</text>
+          </svg>
+          <div class="draw-note">Standard T-stykke for avgrening i trykkledning. Forankres mot jordtrykk i begge retninger.</div>
+        </div>
+
+        <!-- Bend / bøy -->
+        <div class="draw-card">
+          <div class="draw-head"><span>Bend 45° / 90°, plan</span><span class="dn">DN/OD</span></div>
+          <svg viewBox="0 0 280 180" xmlns="http://www.w3.org/2000/svg">
+            <path d="M30 150 L30 70 Q30 40 60 40 L230 40" fill="none" stroke="#1B3A5C" stroke-width="14" stroke-linecap="butt"/>
+            <path d="M30 150 L30 70 Q30 40 60 40 L230 40" fill="none" stroke="#C1542C" stroke-width="1" stroke-dasharray="5 3"/>
+            <text x="100" y="170" font-family="JetBrains Mono" font-size="10" fill="#6B828C">90° bend — forankringspunkt</text>
+            <circle cx="30" cy="100" r="3" fill="#2E8B8B"/>
+            <circle cx="60" cy="40" r="3" fill="#2E8B8B"/>
+          </svg>
+          <div class="draw-note">Krumning i ledningstrasé. Krever forankringsblokk (thrust block) dimensjonert for resulterende trykkraft.</div>
+        </div>
+
+        <!-- Reduksjon -->
+        <div class="draw-card">
+          <div class="draw-head"><span>Reduksjon, konsentrisk</span><span class="dn">DN1 → DN2</span></div>
+          <svg viewBox="0 0 280 160" xmlns="http://www.w3.org/2000/svg">
+            <rect x="20" y="55" width="100" height="50" fill="none" stroke="#1B3A5C" stroke-width="3"/>
+            <path d="M120 55 L190 70 L190 90 L120 105 Z" fill="none" stroke="#1B3A5C" stroke-width="3"/>
+            <rect x="190" y="70" width="70" height="20" fill="none" stroke="#1B3A5C" stroke-width="3"/>
+            <line x1="20" y1="80" x2="260" y2="80" stroke="#C1542C" stroke-width="1" stroke-dasharray="5 3"/>
+            <text x="80" y="125" font-family="JetBrains Mono" font-size="10" fill="#6B828C">DN1</text>
+            <text x="210" y="125" font-family="JetBrains Mono" font-size="10" fill="#6B828C">DN2</text>
+          </svg>
+          <div class="draw-note">Konsentrisk reduksjon ved diameterendring i trykkledning. Eksentrisk variant brukes der topp/bunn skal flukte.</div>
+        </div>
+
+        <!-- Sandfangskum -->
+        <div class="draw-card">
+          <div class="draw-head"><span>Sandfangskum, snitt</span><span class="dn">DN600</span></div>
+          <svg viewBox="0 0 280 220" xmlns="http://www.w3.org/2000/svg">
+            <line x1="10" y1="40" x2="270" y2="40" stroke="#16242E" stroke-width="2"/>
+            <rect x="100" y="40" width="80" height="150" fill="none" stroke="#1B3A5C" stroke-width="2.5"/>
+            <rect x="115" y="30" width="50" height="12" fill="none" stroke="#1B3A5C" stroke-width="2.5"/>
+            <!-- rist -->
+            <g stroke="#2E8B8B" stroke-width="1.4">
+              <line x1="118" y1="34" x2="118" y2="40"/><line x1="128" y1="34" x2="128" y2="40"/>
+              <line x1="138" y1="34" x2="138" y2="40"/><line x1="148" y1="34" x2="148" y2="40"/>
+              <line x1="158" y1="34" x2="158" y2="40"/>
+            </g>
+            <!-- outlet pipe higher than bottom (sandfang) -->
+            <rect x="180" y="100" width="30" height="16" fill="none" stroke="#1B3A5C" stroke-width="2"/>
+            <line x1="100" y1="108" x2="180" y2="108" stroke="#C1542C" stroke-width="1" stroke-dasharray="4 2"/>
+            <!-- sump -->
+            <rect x="100" y="150" width="80" height="40" fill="none" stroke="#1B3A5C" stroke-width="2"/>
+            <text x="190" y="170" font-family="JetBrains Mono" font-size="8" fill="#6B828C">sandfang</text>
+            <text x="120" y="205" font-family="JetBrains Mono" font-size="9" fill="#6B828C">min. 0.5 m sump</text>
+          </svg>
+          <div class="draw-note">Utløp hevet over bunn for å fange sedimenter før overvannsledning. Sump tømmes ved slamsuging.</div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>VANNINGENIØRENS OPPSLAGSVERK — VEILEDENDE VERKTØY, ERSTATTER IKKE PROSJEKTERING ELLER LOKAL VA-NORM</footer>
+
+<script>
+  document.getElementById('rev-date').textContent = new Date().toLocaleDateString('no-NO',{year:'numeric',month:'2-digit',day:'2-digit'});
+
+  function fmt(n, d=2){
+    if(!isFinite(n)) return '–';
+    return n.toLocaleString('no-NO',{minimumFractionDigits:d, maximumFractionDigits:d});
+  }
+  function bindCalc(ids, fn){
+    ids.forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('input', fn);
+    });
+    fn();
+  }
+
+  // 01.1 Hazen-Williams
+  bindCalc(['hw-L','hw-Q','hw-D','hw-C'], ()=>{
+    const L = parseFloat(document.getElementById('hw-L').value);
+    const Q = parseFloat(document.getElementById('hw-Q').value)/1000; // l/s -> m3/s
+    const D = parseFloat(document.getElementById('hw-D').value)/1000; // mm -> m
+    const C = parseFloat(document.getElementById('hw-C').value);
+    const hf = 10.67 * L * Math.pow(Q,1.852) / (Math.pow(C,1.852) * Math.pow(D,4.87));
+    document.getElementById('hw-out').innerHTML = fmt(hf,3) + ' m <span class="rune">(' + fmt(hf/L*1000,2) + ' ‰)</span>';
+  });
+
+  // 01.2 hastighet
+  bindCalc(['v-Q','v-D'], ()=>{
+    const Q = parseFloat(document.getElementById('v-Q').value)/1000;
+    const D = parseFloat(document.getElementById('v-D').value)/1000;
+    const A = Math.PI/4*D*D;
+    const v = Q/A;
+    document.getElementById('v-out').textContent = fmt(v,2) + ' m/s';
+  });
+
+  // 01.3 pumpeeffekt
+  bindCalc(['p-Q','p-H','p-eta'], ()=>{
+    const Q = parseFloat(document.getElementById('p-Q').value)/1000;
+    const H = parseFloat(document.getElementById('p-H').value);
+    const eta = parseFloat(document.getElementById('p-eta').value);
+    const P = 1000*9.81*Q*H/eta;
+    document.getElementById('p-out').innerHTML = fmt(P/1000,2) + ' kW';
+  });
+
+  // 01.4 trykk
+  bindCalc(['b-h'], ()=>{
+    const h = parseFloat(document.getElementById('b-h').value);
+    const p = 1000*9.81*h;
+    document.getElementById('b-out').innerHTML = fmt(p/1000,1) + ' kPa <span class="rune">(' + fmt(p/100000,2) + ' bar)</span>';
+  });
+
+  // 02.1 rasjonal metode
+  bindCalc(['rm-C','rm-i','rm-A'], ()=>{
+    const C = parseFloat(document.getElementById('rm-C').value);
+    const i = parseFloat(document.getElementById('rm-i').value);
+    const A = parseFloat(document.getElementById('rm-A').value);
+    const Q = C*i*A; // already in l/s per ha basis matches directly: Q[l/s] = C * i[l/s/ha] * A[ha]
+    document.getElementById('rm-out').textContent = fmt(Q,1) + ' l/s';
+  });
+
+  // 02.2 manning
+  bindCalc(['mn-D','mn-I','mn-n'], ()=>{
+    const D = parseFloat(document.getElementById('mn-D').value)/1000;
+    const I = parseFloat(document.getElementById('mn-I').value)/1000; // promille -> m/m
+    const n = parseFloat(document.getElementById('mn-n').value);
+    const R = D/4;
+    const v = (1/n)*Math.pow(R,2/3)*Math.pow(I,0.5);
+    const A = Math.PI/4*D*D;
+    const Q = v*A;
+    document.getElementById('mn-out-v').textContent = fmt(v,2) + ' m/s';
+    document.getElementById('mn-out-q').textContent = fmt(Q*1000,1) + ' l/s';
+  });
+
+  // 02.4 klimafaktor
+  bindCalc(['kf-i','kf-k'], ()=>{
+    const i = parseFloat(document.getElementById('kf-i').value);
+    const k = parseFloat(document.getElementById('kf-k').value);
+    document.getElementById('kf-out').textContent = fmt(i*k,1) + ' l/s·ha';
+  });
+
+  // 03.1 vannbehov
+  bindCalc(['vb-N','vb-q','vb-f'], ()=>{
+    const N = parseFloat(document.getElementById('vb-N').value);
+    const q = parseFloat(document.getElementById('vb-q').value);
+    const f = parseFloat(document.getElementById('vb-f').value);
+    const Qd = N*q*f/1000; // m3/d
+    document.getElementById('vb-out').innerHTML = fmt(Qd,1) + ' m³/d <span class="rune">(' + fmt(Qd*1000/86400,2) + ' l/s snitt)</span>';
+  });
+
+  // 03.2 reservoar
+  bindCalc(['rv-Qd','rv-t','rv-brann'], ()=>{
+    const Qd = parseFloat(document.getElementById('rv-Qd').value);
+    const t = parseFloat(document.getElementById('rv-t').value);
+    const brann = parseFloat(document.getElementById('rv-brann').value);
+    const V = Qd*t/24 + brann;
+    document.getElementById('rv-out').textContent = fmt(V,0) + ' m³';
+  });
+
+  // 03.3 trykksone
+  bindCalc(['ts-zr','ts-zp'], ()=>{
+    const zr = parseFloat(document.getElementById('ts-zr').value);
+    const zp = parseFloat(document.getElementById('ts-zp').value);
+    const p = (zr-zp)/10.2;
+    document.getElementById('ts-out').textContent = fmt(p,2) + ' bar';
+  });
+
+  // 03.4 klor
+  bindCalc(['cl-C','cl-Q'], ()=>{
+    const C = parseFloat(document.getElementById('cl-C').value);
+    const Q = parseFloat(document.getElementById('cl-Q').value)/1000;
+    const D = C*Q*86.4;
+    document.getElementById('cl-out').textContent = fmt(D,2) + ' kg/d';
+  });
+</script>
+
+</body>
+</html>
